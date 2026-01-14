@@ -1,0 +1,19 @@
+
+# Python
+.env
+__pycache__/
+venv/
+*.pyc
+
+# Node
+node_modules
+package-lock.json
+
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+*:Zone.Identifier
