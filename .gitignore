@@ -7,13 +7,19 @@ venv/
 
 # Node
 node_modules
-package-lock.json
+out/
+dist/
 
+
+# Logs
+npm-debug.log*
+*.log
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Logs
-npm-debug.log*
-*:Zone.Identifier
+# IDE
+.vscode/
+.idea/
+

@@ -13,9 +13,16 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Lavoo Waitlist API", version="1.0.0")
 
 # Configure CORS to allow frontend to communicate with backend
+origins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:5173",
+    "http://localhost:8080"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with your frontend URL
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -25,23 +32,23 @@ from fastapi import Request
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    print(f"\n🔍 INCOMING REQUEST: {request.method} {request.url.path}")
+    # Reduced logging noise for production
+    if request.url.path != "/":  # Skip health check spam
+        logger.info(f"INCOMING REQUEST: {request.method} {request.url.path}")
     response = await call_next(request)
-    print(f"✅ REQUEST COMPLETED: {response.status_code}\n")
     return response
 
 # Create database tables
-print(f"DEBUG: Connecting to DB engine for initialization...")
+# logger.info("Connecting to DB engine for initialization...")
 Base.metadata.create_all(bind=engine)
-print("DEBUG: Database tables initialized.")
+# logger.info("Database tables initialized.")
 
 @app.get("/")
 def read_root():
     """Root endpoint to verify API is running"""
     return {
-        "message": "LAVOO WAITLIST API ACTIVE ON PORT 8001", 
-        "status": "healthy",
-        "port": 8001
+        "message": "LAVOO WAITLIST API ACTIVE", 
+        "status": "healthy"
     }
 
 @app.post("/api/waitlist")
@@ -49,11 +56,6 @@ async def add_to_waitlist(
     email: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    # CRITICAL DEBUG: Ensure we see requests in the terminal
-    print("\n" + "="*50)
-    print(f"🚀 CRITICAL: REQUEST RECEIVED for email: {email}")
-    print("="*50 + "\n")
-    
     """
     Add an email to the waitlist.
     
@@ -70,18 +72,15 @@ async def add_to_waitlist(
     try:
         # Normalize email
         normalized_email = email.lower().strip()
-        print(f"DEBUG: Processing email: {normalized_email}")
+        logger.info(f"Processing waitlist request for: {normalized_email}")
         
         # Validate email format (basic check)
         if not normalized_email or "@" not in normalized_email or "." not in normalized_email:
-            print(f"DEBUG: Validation failed for: {normalized_email}")
+            logger.warning(f"Validation failed for: {normalized_email}")
             raise HTTPException(
                 status_code=400,
                 detail="Invalid email format"
             )
-        
-        # Normalize email
-        normalized_email = email.lower().strip()
         
         # Check if email already exists in the waitlist
         existing_entry = db.query(Waitlist).filter(Waitlist.email == normalized_email).first()
@@ -139,3 +138,31 @@ async def get_waitlist_count(db: Session = Depends(get_db)):
             status_code=500,
             detail="An error occurred while fetching waitlist count"
         )
+
+# Serve static files (Frontend) - MUST BE LAST
+import os
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+# Check if the build output directory exists (production mode)
+if os.path.exists("out"):
+    # Mount the assets folder separately to avoid conflict with root catch-all
+    # Vite places assets in out/assets
+    if os.path.exists("out/assets"):
+        app.mount("/assets", StaticFiles(directory="out/assets"), name="assets")
+
+    # Serve the main index.html for the root path and any other path (SPA support)
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        # Allow API routes to pass through (though they should be matched above)
+        if full_path.startswith("api"):
+            raise HTTPException(status_code=404, detail="API route not found")
+        
+        # Check if the file exists in the out directory (e.g., favicon.ico, etc.)
+        file_path = os.path.join("out", full_path)
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+             return FileResponse(file_path)
+        
+        # Fallback to index.html for SPA routing
+        return FileResponse("out/index.html")
+

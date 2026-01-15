@@ -5,3 +5,5 @@ psycopg2-binary
 sqlalchemy
 email-validator
 requests
+python-multipart
+aiofiles
