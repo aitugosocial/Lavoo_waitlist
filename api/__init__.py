@@ -43,6 +43,7 @@ async def log_requests(request: Request, call_next):
 Base.metadata.create_all(bind=engine)
 # logger.info("Database tables initialized.")
 
+'''
 @app.get("/")
 def read_root():
     """Root endpoint to verify API is running"""
@@ -50,6 +51,7 @@ def read_root():
         "message": "LAVOO WAITLIST API ACTIVE", 
         "status": "healthy"
     }
+'''
 
 @app.post("/api/waitlist")
 async def add_to_waitlist(

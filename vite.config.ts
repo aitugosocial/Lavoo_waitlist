@@ -8,7 +8,8 @@ const isPreview = process.env.IS_PREVIEW ? true : false;
 // https://vite.dev/config/
 export default ({ mode }: { mode: string }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const apiUrl = env.VITE_API_URL || 'http://localhost:8001';
+  const backendPort = env.PORT || '8000';
+  const apiUrl = env.VITE_API_URL || `http://localhost:${backendPort}`;
 
   return defineConfig({
     define: {
